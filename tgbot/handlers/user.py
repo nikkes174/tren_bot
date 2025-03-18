@@ -1,18 +1,15 @@
-import asyncio
-
 from aiogram import Router, F, Dispatcher
-from aiogram.filters import CommandStart, Command, StateFilter
+from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import Message
-from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram import Bot, types
+from aiogram import Bot
 from aiogram.types import CallbackQuery
-from yookassa import Configuration, Payment
 
-
+from yookassa import Configuration
 import os
 import random
+import asyncio
 
 from tgbot.database import check_date_tranning, add_date_tranning
 from tgbot.database import check_payment
@@ -21,10 +18,6 @@ from .payment import create_payment, check_payment_loop
 from tgbot.keyboards.inline import choice_gender, activity_level, to_back, first_start_keyboard, \
     training_period, choice_goal, gender_for_trening, level_trening_wooman, level_trening_mans, payment_start
 
-
-
-
-
 TOKEN = "6535006519:AAEn_TXF3aGQ8oTlm629D4MLL3fybRAnGnQ"
 YOOKASSA_SHOP_ID = "1032008"
 YOOKASSA_SECRET = "live_CEqPQ1lwbzMqCs-61XbxCeYvrqczpNzmMVQU5o3hXO8"
@@ -32,11 +25,7 @@ Configuration.account_id = YOOKASSA_SHOP_ID
 Configuration.secret_key = YOOKASSA_SECRET
 user_router = Router()
 dp = Dispatcher()
-allowed_extensions = {".docx"}
-user_payments = {}
-user_access = {}
-USER_ACCESS_FILE = "user_access.json"
-storage = MemoryStorage()
+
 
 
 class UserData(StatesGroup):
@@ -48,8 +37,9 @@ class UserData(StatesGroup):
     goal = State()
     waiting_for_email = State()
 
+
 @user_router.message(CommandStart())
-async def user_start(message : Message):
+async def user_start(message: Message):
     try:
         await message.delete()
     except Exception as e:
@@ -69,38 +59,27 @@ async def user_start(message : Message):
     )
 
 
-
-
 @user_router.callback_query(F.data == "training_programs")
 async def training_programs_handler(callback_query: CallbackQuery, bot: Bot):
     user_id = callback_query.from_user.id
-
-    # 🗑️ Пытаемся удалить предыдущее сообщение (если есть)
     try:
         await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
     except Exception as e:
         print(f"⚠️ Ошибка удаления сообщения: {e}")
-
-    # ✅ Если админ или у пользователя есть подписка — даем доступ
     if is_admin(user_id) or check_payment(user_id):
         await bot.send_message(
             user_id,
             "✅ У вас уже есть доступ! Вот ваша тренировочная программа:",
             reply_markup=training_period()
         )
-        return  # Выходим из обработчика
-
-    # 💳 Если нет подписки — предлагаем оплату
-    amount = 1  # Фиксированная сумма (1 рубль)
+        return
+    amount = 2000.00
     payment_id, payment_url = create_payment(amount)
-
     await bot.send_message(
         user_id,
         f"❗ У вас нет активной подписки.",
         reply_markup=payment_start(payment_url)
     )
-
-    # 🔄 Запускаем проверку платежа в фоне
     asyncio.create_task(check_payment_loop(payment_id, user_id, bot))
 
 
@@ -114,6 +93,7 @@ async def take_menu(call: CallbackQuery):
     except Exception as e:
         print(f"⚠️ Ошибка редактирования сообщения: {e}")
 
+
 @user_router.callback_query(F.data == "calculation_kal")
 async def ask_gender(call: CallbackQuery, state: FSMContext):
     await call.message.edit_text(
@@ -122,25 +102,18 @@ async def ask_gender(call: CallbackQuery, state: FSMContext):
     )
 
 
-# Выбор пола
 @user_router.callback_query(F.data.in_(["the_man", "the_woman"]))
 async def ask_age(call: CallbackQuery, state: FSMContext):
     gender = "Мужской" if call.data == "the_man" else "Женский"
     print(f"Пользователь выбрал пол: {gender}")
-
     await state.update_data(gender=gender)
     await state.set_state(UserData.age)
 
-    # ✅ Удаляем предыдущее сообщение (если возможно)
     try:
         await call.message.delete()
     except Exception as e:
         print(f"⚠️ Ошибка удаления сообщения: {e}")
-
-    # ✅ Отправляем новое сообщение с запросом возраста
     new_message = await call.message.answer("Введите ваш возраст (лет):")
-
-    # ✅ Получаем старый ID сообщения (если есть) и удаляем
     data = await state.get_data()
     last_message_id = data.get("last_message_id")
 
@@ -150,11 +123,9 @@ async def ask_age(call: CallbackQuery, state: FSMContext):
         except Exception as e:
             print(f"⚠️ Ошибка удаления предыдущего сообщения: {e}")
 
-    # ✅ Сохраняем новый ID сообщения в состоянии
     await state.update_data(last_message_id=new_message.message_id)
 
 
-# Ввод возраста
 @user_router.message(UserData.age)
 async def ask_weight(message: Message, state: FSMContext):
     try:
@@ -183,57 +154,40 @@ async def ask_height(message: Message, state: FSMContext):
         await state.update_data(weight=weight)
         await state.set_state(UserData.height)
 
-        # ✅ Отправляем новое сообщение с запросом роста
         new_message = await message.answer("Введите ваш рост (в см):")
 
         # ✅ Получаем сохраненные данные состояния
         data = await state.get_data()
         last_message_id = data.get("last_message_id")
-
-        # ✅ Удаляем предыдущее сообщение с этим же вопросом
         if last_message_id:
             try:
                 await message.bot.delete_message(chat_id=message.chat.id, message_id=last_message_id)
             except Exception as e:
                 print(f"⚠️ Ошибка удаления предыдущего сообщения: {e}")
-
-        # ✅ Сохраняем ID нового сообщения, чтобы удалить его при следующем вводе
         await state.update_data(last_message_id=new_message.message_id)
-
     except ValueError:
         await message.answer("❌ Пожалуйста, введите корректный вес числом (30-300 кг).")
 
 
-
-# Ввод роста
 @user_router.message(UserData.height)
 async def ask_goal(message: Message, state: FSMContext):
     try:
         height = float(message.text)
         if height < 100 or height > 250:
             raise ValueError("Рост вне допустимого диапазона.")
-
         await state.update_data(height=height)
         await state.set_state(UserData.goal)
-
-        # ✅ Отправляем новое сообщение с выбором цели
         new_message = await message.answer(
             "Какая ваша цель? 🎯",
             reply_markup=choice_goal()
         )
-
-        # ✅ Получаем сохраненный ID последнего сообщения (если оно есть)
         data = await state.get_data()
         last_message_id = data.get("last_message_id")
-
-        # ✅ Удаляем предыдущее сообщение с этим же вопросом
         if last_message_id:
             try:
                 await message.bot.delete_message(chat_id=message.chat.id, message_id=last_message_id)
             except Exception as e:
                 print(f"⚠️ Ошибка удаления предыдущего сообщения: {e}")
-
-        # ✅ Сохраняем новый ID сообщения, чтобы удалить его при новом вводе
         await state.update_data(last_message_id=new_message.message_id)
 
     except ValueError:
@@ -307,13 +261,10 @@ async def calculate_bju(call: CallbackQuery, state: FSMContext):
 
 @user_router.callback_query(F.data == "the_info")
 async def take_menu(call: CallbackQuery):
-    # ✅ Удаляем предыдущее сообщение
     try:
         await call.message.delete()
     except Exception as e:
-        print(f"⚠️ Ошибка удаления сообщения: {e}")  # Игнорируем ошибки
-
-    # ✅ Отправляем новое сообщение с информацией
+        print(f"⚠️ Ошибка удаления сообщения: {e}")
     await call.message.answer(
         f"✅ *ОНЛАЙН ВЕДЕНИЕ:*\n"
         f"📌 *Составление тренировочного плана*\n"
@@ -324,7 +275,7 @@ async def take_menu(call: CallbackQuery):
         f"✅ *Персональный план тренировок и питания:*\n"
         f"📌 *Индивидуальный подсчет КБЖУ под ваши цели*\n"
         f"📌 *Тренировочный сплит под ваш уровень подготовки*\n\n"
-        f"⚠️ *Срок пользования*: 1 месяц с момента оплаты.\n"      
+        f"⚠️ *Срок пользования*: 1 месяц с момента оплаты.\n"
         f"❗️❗️ *Тренировочный сплит выдается 1 раз в месяц*❗️❗\n"
         f"⚠️ *Далее раздел блокируется*\n"
         f"📌 *При повторной покупке вы получаете новый план.*",
@@ -336,16 +287,10 @@ async def take_menu(call: CallbackQuery):
 @user_router.callback_query(F.data == "one_mouth")
 async def take_men(call: CallbackQuery):
     user_id = call.from_user.id
-
-
     if not check_date_tranning(user_id):
         await call.message.answer("❌ Вы уже использовали этот раздел в этом месяце. Попробуйте позже.")
         return
-
-
     add_date_tranning(user_id)
-
-    # ✅ Отправляем меню
     await call.message.edit_text(
         text="Укажите ваш пол",
         reply_markup=gender_for_trening()
@@ -364,52 +309,37 @@ async def take_menu(call: CallbackQuery):
                                  , reply_markup=level_trening_wooman())
 
 
-
-
-
 @user_router.callback_query(F.data == "hard_level_m")
 async def get_program(callback_query: CallbackQuery, bot: Bot):
-    # Жесткий путь к папке (для теста)
     PLANS_DIRECTORY = "/root/bot/Files/man/senior"
 
-    # Отладка
     print(f"🔍 Проверка пути: {PLANS_DIRECTORY}")
     print(f"🔍 Существует ли папка? {os.path.exists(PLANS_DIRECTORY)}")
-
     try:
         if not os.path.exists(PLANS_DIRECTORY):
             print(f"❌ Ошибка: Папка {PLANS_DIRECTORY} не существует!")
             await bot.answer_callback_query(callback_query.id, text="Ошибка: Папка с файлами не найдена.")
             return
-
         files = [f for f in os.listdir(PLANS_DIRECTORY) if f.endswith('.txt')]
         if not files:
             await bot.answer_callback_query(callback_query.id, text="В папке нет доступных файлов.")
             return
-
         random_file = random.choice(files)
         file_path = os.path.join(PLANS_DIRECTORY, random_file)
-
         print(f"📂 Файл для отправки: {file_path}")
-
         with open(file_path, 'r', encoding='utf-8') as file:
             file_content = file.read()
-
         await bot.send_message(callback_query.from_user.id, file_content)
         await bot.answer_callback_query(callback_query.id, text="Ваш тренировочный план!")
-
     except Exception as e:
         print(f"❌ Ошибка при отправке файла: {str(e)}")
         await bot.answer_callback_query(callback_query.id, text=f"Произошла ошибка: {str(e)}")
-
 
 
 @user_router.callback_query(F.data == "easy_level_m")
 async def get_program(callback_query: CallbackQuery, bot: Bot):
-    # Жесткий путь к папке (для теста)
     PLANS_DIRECTORY = "/root/bot/Files/man/jun"
 
-    # Отладка
     print(f"🔍 Проверка пути: {PLANS_DIRECTORY}")
     print(f"🔍 Существует ли папка? {os.path.exists(PLANS_DIRECTORY)}")
 
@@ -423,53 +353,41 @@ async def get_program(callback_query: CallbackQuery, bot: Bot):
         if not files:
             await bot.answer_callback_query(callback_query.id, text="В папке нет доступных файлов.")
             return
-
         random_file = random.choice(files)
         file_path = os.path.join(PLANS_DIRECTORY, random_file)
-
         print(f"📂 Файл для отправки: {file_path}")
-
         with open(file_path, 'r', encoding='utf-8') as file:
             file_content = file.read()
-
         await bot.send_message(callback_query.from_user.id, file_content)
         await bot.answer_callback_query(callback_query.id, text="Ваш тренировочный план!")
-
     except Exception as e:
         print(f"❌ Ошибка при отправке файла: {str(e)}")
         await bot.answer_callback_query(callback_query.id, text=f"Произошла ошибка: {str(e)}")
+
 
 @user_router.callback_query(F.data == "hard_level_w")
 async def get_program(callback_query: CallbackQuery, bot: Bot):
     # Жесткий путь к папке (для теста)
     PLANS_DIRECTORY = "/root/bot/Files/wooman/senior"
-
     # Отладка
     print(f"🔍 Проверка пути: {PLANS_DIRECTORY}")
     print(f"🔍 Существует ли папка? {os.path.exists(PLANS_DIRECTORY)}")
-
     try:
         if not os.path.exists(PLANS_DIRECTORY):
             print(f"❌ Ошибка: Папка {PLANS_DIRECTORY} не существует!")
             await bot.answer_callback_query(callback_query.id, text="Ошибка: Папка с файлами не найдена.")
             return
-
         files = [f for f in os.listdir(PLANS_DIRECTORY) if f.endswith('.txt')]
         if not files:
             await bot.answer_callback_query(callback_query.id, text="В папке нет доступных файлов.")
             return
-
         random_file = random.choice(files)
         file_path = os.path.join(PLANS_DIRECTORY, random_file)
-
         print(f"📂 Файл для отправки: {file_path}")
-
         with open(file_path, 'r', encoding='utf-8') as file:
             file_content = file.read()
-
         await bot.send_message(callback_query.from_user.id, file_content)
         await bot.answer_callback_query(callback_query.id, text="Ваш тренировочный план!")
-
     except Exception as e:
         print(f"❌ Ошибка при отправке файла: {str(e)}")
         await bot.answer_callback_query(callback_query.id, text=f"Произошла ошибка: {str(e)}")
@@ -501,14 +419,3 @@ async def get_program(callback_query: CallbackQuery, bot: Bot):
     except Exception as e:
         print(f"❌ Ошибка при отправке файла: {str(e)}")
         await bot.answer_callback_query(callback_query.id, text=f"Произошла ошибка: {str(e)}")
-
-
-
-
-
-
-
-
-
-
-

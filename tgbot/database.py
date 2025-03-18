@@ -1,7 +1,7 @@
 import datetime
 import sqlite3
 
-DB_PATH = "database.db"  # Путь к файлу базы данных
+DB_PATH = "database.db"
 
 
 def create_db():
