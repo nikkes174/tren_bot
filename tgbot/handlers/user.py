@@ -18,7 +18,7 @@ from .payment import create_payment, check_payment_loop
 from tgbot.keyboards.inline import choice_gender, activity_level, to_back, first_start_keyboard, \
     training_period, choice_goal, gender_for_trening, level_trening_wooman, level_trening_mans, payment_start
 
-TOKEN = "6535006519:AAEn_TXF3aGQ8oTlm629D4MLL3fybRAnGnQ"
+TOKEN = "7781808909:AAHhB7Od4aGe95BRS0_MLa7JbZEU36k96M8"
 YOOKASSA_SHOP_ID = "1032008"
 YOOKASSA_SECRET = "live_CEqPQ1lwbzMqCs-61XbxCeYvrqczpNzmMVQU5o3hXO8"
 Configuration.account_id = YOOKASSA_SHOP_ID
