@@ -14,7 +14,7 @@ from tgbot.services import broadcaster
 
 
 async def on_startup(bot: Bot, admin_ids: list[int]):
-    await broadcaster.broadcast(bot, admin_ids, "запущен")
+    await broadcaster.broadcast(bot, admin_ids, "Бот запущен")
 
 
 def register_global_middlewares(dp: Dispatcher, config: Config, session_pool=None):

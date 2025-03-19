@@ -13,7 +13,7 @@ import asyncio
 
 from tgbot.database import check_date_tranning, add_date_tranning
 from tgbot.database import check_payment
-from .admin import is_admin
+from .admin import is_admin, ADMINS
 from .payment import create_payment, check_payment_loop
 from tgbot.keyboards.inline import choice_gender, activity_level, to_back, first_start_keyboard, \
     training_period, choice_goal, gender_for_trening, level_trening_wooman, level_trening_mans, payment_start
@@ -73,8 +73,7 @@ async def training_programs_handler(callback_query: CallbackQuery, bot: Bot):
             reply_markup=training_period()
         )
         return
-    amount = 2000.00
-    payment_id, payment_url = create_payment(amount)
+    payment_id, payment_url = create_payment(2000.00)
     await bot.send_message(
         user_id,
         f"❗ У вас нет активной подписки.",
@@ -122,7 +121,6 @@ async def ask_age(call: CallbackQuery, state: FSMContext):
             await call.message.bot.delete_message(chat_id=call.message.chat.id, message_id=last_message_id)
         except Exception as e:
             print(f"⚠️ Ошибка удаления предыдущего сообщения: {e}")
-
     await state.update_data(last_message_id=new_message.message_id)
 
 
@@ -288,8 +286,15 @@ async def take_menu(call: CallbackQuery):
 async def take_men(call: CallbackQuery):
     user_id = call.from_user.id
     if not check_date_tranning(user_id):
-        await call.message.answer("❌ Вы уже использовали этот раздел в этом месяце. Попробуйте позже.")
-        return
+        if user_id == ADMINS:
+            await call.message.edit_text(
+                text="Укажите ваш пол",
+                reply_markup=gender_for_trening()
+            )
+            return
+        if not check_date_tranning(user_id):
+            await call.message.answer("❌ Вы уже использовали этот раздел в этом месяце. Попробуйте позже.")
+            return
     add_date_tranning(user_id)
     await call.message.edit_text(
         text="Укажите ваш пол",

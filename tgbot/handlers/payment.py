@@ -19,8 +19,9 @@ Configuration.secret_key = YOOKASSA_SECRET_KEY
 def create_payment(amount):
     payment = Payment.create({
         "amount": {
-            "value": "2000.00",
+            "value": 2000.00,
             "currency": "RUB"
+
         },
         "confirmation": {
             "type": "redirect",
@@ -35,12 +36,12 @@ def create_payment(amount):
             "items": [
                 {
                     "description": "Тренировочная программа",
-                    "quantity": "1.00",
+                    "quantity": 1,
                     "amount": {
-                        "value": "1.00",
+                        "value": 2000.00,
                         "currency": "RUB"
                     },
-                    "vat_code": "2000.00",
+                    "vat_code": 1,
                     "payment_mode": "full_prepayment",
                     "payment_subject": "service"
                 }
