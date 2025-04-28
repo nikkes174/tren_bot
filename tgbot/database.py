@@ -22,7 +22,10 @@ cur.executescript(tables)
 
 # Функция для добавления или обновления информации о платеже
 def add_payment(user_id):
-    end_payment_date = (datetime.datetime.now() + datetime.timedelta(days=30)).strftime('%Y-%m-%d')
+    end_payment_date = (
+        datetime.datetime.now() +
+         datetime.timedelta(days=30)
+         ).strftime('%Y-%m-%d')
 
     cur.execute('''
     INSERT INTO payments_table (user_id, end_payment_date)
@@ -52,7 +55,10 @@ def check_payment(user_id):
 
 # Функция для добавления или обновления даты тренировки
 def add_date_tranning(user_id):
-    end_tranning_date = (datetime.datetime.now() + datetime.timedelta(days=30)).strftime('%Y-%m-%d')
+    end_tranning_date = (
+        datetime.datetime.now() +
+         datetime.timedelta(days=30)).strftime('%Y-%m-%d'
+        )
 
     cur.execute('''
     INSERT INTO date_tranning (user_id, end_tranning_date)
@@ -73,7 +79,10 @@ def check_date_tranning(user_id):
     result = cur.fetchone()
     if result:
         try:
-            end_tranning_date = datetime.datetime.strptime(result[0], '%Y-%m-%d')
+            end_tranning_date = datetime.datetime.strptime(
+                result[0],
+                 '%Y-%m-%d'
+                 )
             now = datetime.datetime.now()
             if (now - end_tranning_date).days < 30:
                 return False

@@ -25,7 +25,7 @@ def create_payment(amount):
         },
         "confirmation": {
             "type": "redirect",
-            "return_url": "https://t.me/nikkestelegrambot"
+            "return_url": ""
         },
         "capture": True,
         "description": "Оплата тренировки",
